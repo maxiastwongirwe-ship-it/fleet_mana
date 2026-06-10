@@ -1,0 +1,10 @@
+vendor
+node_modules
+storage
+.env
+.env.*
+.git
+.gitignore
+npm-debug.log*
+Dockerfile
+render.yaml
