@@ -135,3 +135,11 @@
 @livewireScripts
 </body>
 </html>
+
+<!-- Floating Login Button -->
+<div class="fixed bottom-6 right-6 z-50">
+    <a href="{{ route('login') }}" aria-label="Login" 
+       class="inline-flex items-center px-4 py-3 bg-sky-600 hover:bg-sky-700 text-white rounded-full shadow-lg transition">
+        Login
+    </a>
+</div>

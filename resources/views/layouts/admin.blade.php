@@ -199,3 +199,11 @@ class="sidebar-link px-4 py-3 text-gray-700 flex items-center gap-3 {{ request()
 @stack('scripts')
 </body>
 </html>
+
+<!-- Floating Login Button -->
+<div class="fixed bottom-6 right-6 z-50">
+    <a href="{{ route('login') }}" aria-label="Login" 
+       class="inline-flex items-center px-4 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full shadow-lg transition">
+        Login
+    </a>
+</div>
