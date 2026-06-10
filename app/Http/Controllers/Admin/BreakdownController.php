@@ -162,19 +162,22 @@ class BreakdownController extends Controller
     }
 
 
+          /**
+     * Admin approves the breakdown report
+     */
     public function approve(Breakdown $breakdown)
-{
-    if (!$breakdown->canBeApprovedBy(auth()->user())) {
-        return back()->with('error', 'You do not have permission to approve this breakdown.');
+    {
+        if (!$breakdown->canBeApprovedBy(auth()->user())) {
+            return back()->with('error', 'You do not have permission to approve this breakdown.');
+        }
+
+        // Update both approval flag and status for consistency
+        $breakdown->update([
+            'approved'     => true,
+            'approved_by'  => auth()->id(),
+            'status'       => 'acknowledged',   // This is the key fix
+        ]);
+
+        return back()->with('success', 'Breakdown approved successfully. The driver can now mark it as repaired and request payment.');
     }
-
-    $breakdown->update([
-        'approved'     => true,
-        'approved_by'  => auth()->id(),
-        // Optional: also change status if you want
-        // 'status'    => 'acknowledged',
-    ]);
-
-    return back()->with('success', 'Breakdown approved successfully.');
-}
 }

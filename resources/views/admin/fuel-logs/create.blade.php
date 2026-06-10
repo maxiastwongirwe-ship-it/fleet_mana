@@ -1,125 +1,247 @@
 @extends('layouts.admin')
 
-@section('title', 'Log Fuel Fill-up')
+@section('title', 'Log New Fuel Fill-up')
 
 @section('content')
-    <div class="max-w-4xl mx-auto">
-        <div class="flex justify-between items-center mb-10">
-            <h1 class="text-3xl font-bold text-gray-900">Log Fuel Fill-up</h1>
-            <a href="{{ route('admin.fuel-logs.index') }}" class="text-indigo-600 hover:text-indigo-800 font-medium flex items-center">
-                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-                </svg>
-                Back to Logs
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 py-8">
+        <div class="flex justify-between items-center mb-8">
+            <div>
+                <h1 class="text-3xl font-semibold text-gray-900">Log New Fuel Fill-up</h1>
+                <p class="text-gray-500">Record actual fuel dispensed and monitor consumption</p>
+            </div>
+            <a href="{{ route('admin.fuel-logs.index') }}" 
+               class="text-gray-500 hover:text-gray-700 flex items-center gap-2">
+                ← Back to Fuel Activity
             </a>
         </div>
 
-        <form method="POST" action="{{ route('admin.fuel-logs.store') }}" enctype="multipart/form-data" class="bg-white rounded-2xl shadow-lg p-10 space-y-10">
-            @csrf
+        <div class="bg-white rounded-3xl shadow-sm p-10">
+            <form method="POST" action="{{ route('admin.fuel-logs.store') }}" enctype="multipart/form-data">
+                @csrf
 
-            <!-- Linked Request (optional) -->
-            <div>
-                <label for="fuel_request_id" class="block text-lg font-medium text-gray-700 mb-3">Linked Approved Request (optional)</label>
-                <select name="fuel_request_id" id="fuel_request_id" 
-                        class="block w-full px-6 py-5 text-lg border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 transition">
-                    <option value="">-- None / Manual Log --</option>
-                    @foreach (\App\Models\FuelRequest::where('status', 'approved')->whereDoesntHave('fuelLog')->get() as $req)
-                        <option value="{{ $req->id }}">
-                            {{ $req->vehicle->plate_number }} — {{ $req->requested_amount }} L — {{ $req->requester->name }}
-                        </option>
-                    @endforeach
-                </select>
-            </div>
-
-            <!-- Vehicle & Driver -->
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <div>
-                    <label for="vehicle_id" class="block text-lg font-medium text-gray-700 mb-3">Vehicle</label>
-                    <select name="vehicle_id" id="vehicle_id" required 
-                            class="block w-full px-6 py-5 text-lg border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 transition">
-                        <option value="">-- Select Vehicle --</option>
-                        @foreach ($vehicles as $vehicle)
-                            <option value="{{ $vehicle->id }}" {{ old('vehicle_id') == $vehicle->id ? 'selected' : '' }}>
-                                {{ $vehicle->plate_number }} — {{ $vehicle->make ?? 'N/A' }} {{ $vehicle->model ?? '' }}
+                <!-- Link to Approved Request -->
+                <div class="mb-8">
+                    <label class="block text-sm font-medium text-gray-700 mb-3">Link to Approved Request (Optional)</label>
+                    <select name="fuel_request_id" 
+                            class="w-full px-6 py-4 border border-gray-300 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <option value="">New Manual Entry</option>
+                        @foreach($approvedRequests as $req)
+                            <option value="{{ $req->id }}">
+                                {{ $req->vehicle->plate_number }} — {{ $req->requested_amount }} L requested
                             </option>
                         @endforeach
                     </select>
                 </div>
 
-                <div>
-                    <label for="driver_id" class="block text-lg font-medium text-gray-700 mb-3">Driver</label>
-                    <select name="driver_id" id="driver_id" required 
-                            class="block w-full px-6 py-5 text-lg border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 transition">
-                        <option value="">-- Select Driver --</option>
-                        @foreach ($drivers as $driver)
-                            <option value="{{ $driver->id }}" {{ old('driver_id') == $driver->id ? 'selected' : '' }}>
-                                {{ $driver->name }}
-                            </option>
-                        @endforeach
-                    </select>
-                </div>
-            </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <!-- Vehicle -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-3">Vehicle <span class="text-red-500">*</span></label>
+                        <select name="vehicle_id" id="vehicleSelect" required
+                                class="w-full px-6 py-4 border border-gray-300 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                            <option value="">Select Vehicle</option>
+                            @foreach($vehicles as $vehicle)
+                                <option value="{{ $vehicle->id }}" data-logs='@json($vehicle->fuelLogs)'>
+                                    {{ $vehicle->plate_number }} — {{ $vehicle->make }} {{ $vehicle->model }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
 
-            <!-- Fuel & Odometer -->
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <div>
-                    <label for="litres_dispensed" class="block text-lg font-medium text-gray-700 mb-3">Litres Dispensed</label>
-                    <input type="number" name="litres_dispensed" id="litres_dispensed" value="{{ old('litres_dispensed') }}" step="0.1" min="0.1" required 
-                           class="block w-full px-6 py-5 text-lg border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 transition">
-                </div>
-
-                <div>
-                    <label for="odometer_reading" class="block text-lg font-medium text-gray-700 mb-3">Odometer Reading (km)</label>
-                    <input type="number" name="odometer_reading" id="odometer_reading" value="{{ old('odometer_reading') }}" min="0" step="1" required 
-                           class="block w-full px-6 py-5 text-lg border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 transition">
-                    <p class="mt-2 text-sm text-gray-500">Must be higher than previous log for this vehicle.</p>
-                </div>
-            </div>
-
-            <!-- Station & Cost -->
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <div>
-                    <label for="station_name" class="block text-lg font-medium text-gray-700 mb-3">Filling Station</label>
-                    <input type="text" name="station_name" id="station_name" value="{{ old('station_name') }}" 
-                           class="block w-full px-6 py-5 text-lg border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 transition">
+                    <!-- Driver -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-3">Driver <span class="text-red-500">*</span></label>
+                        <select name="driver_id" required
+                                class="w-full px-6 py-4 border border-gray-300 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                            <option value="">Select Driver</option>
+                            @foreach($drivers as $driver)
+                                <option value="{{ $driver->id }}">{{ $driver->name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
                 </div>
 
-                <div>
-                    <label for="total_cost" class="block text-lg font-medium text-gray-700 mb-3">Total Cost (UGX)</label>
-                    <input type="number" name="total_cost" id="total_cost" value="{{ old('total_cost') }}" min="0" step="100" 
-                           class="block w-full px-6 py-5 text-lg border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 transition">
+                <!-- Consumption History Preview -->
+                <div id="consumptionPreview" class="hidden mt-8 bg-blue-50 border border-blue-200 rounded-2xl p-6">
+                    <h3 class="font-semibold text-blue-900 mb-4">📊 Consumption History (Last 5 Fill-ups)</h3>
+                    <div id="consumptionTable" class="space-y-3 text-sm text-blue-800">
+                        <p>Loading...</p>
+                    </div>
+                    <div class="mt-4 pt-4 border-t border-blue-200">
+                        <div class="flex justify-between font-semibold text-blue-900">
+                            <span>Average Consumption (L/m):</span>
+                            <span id="avgConsumption">—</span>
+                        </div>
+                    </div>
                 </div>
-            </div>
 
-            <!-- Odometer Photo -->
-            <div>
-                <label for="odometer_photo" class="block text-lg font-medium text-gray-700 mb-3">Odometer Photo (proof)</label>
-                <input type="file" name="odometer_photo" id="odometer_photo" accept="image/*" 
-                       class="block w-full text-base text-gray-900 file:mr-4 file:py-4 file:px-8 file:rounded-xl file:border-0 file:font-medium file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 file:cursor-pointer cursor-pointer">
-                <p class="mt-3 text-sm text-gray-500">Upload clear photo of current odometer reading. Max 5MB.</p>
-            </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mt-8">
+                        <label class="block text-sm font-medium text-gray-700 mb-3">Litres Dispensed <span class="text-red-500">*</span></label>
+                        <input type="number" name="litres_dispensed" step="0.01" required
+                               class="w-full px-6 py-4 border border-gray-300 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                               placeholder="e.g. 45.5">
+                    </div>
 
-            <!-- Receipt Photo -->
-            <div>
-                <label for="receipt_photo" class="block text-lg font-medium text-gray-700 mb-3">Receipt / Proof of Payment (optional)</label>
-                <input type="file" name="receipt_photo" id="receipt_photo" accept="image/*" 
-                       class="block w-full text-base text-gray-900 file:mr-4 file:py-4 file:px-8 file:rounded-xl file:border-0 file:font-medium file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 file:cursor-pointer cursor-pointer">
-            </div>
+                    <!-- Odometer Reading -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-3">Current Odometer (km) <span class="text-red-500">*</span></label>
+                        <input type="number" name="odometer_reading" required
+                               class="w-full px-6 py-4 border border-gray-300 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                               placeholder="Current odometer reading">
+                    </div>
 
-            <!-- Notes -->
-            <div>
-                <label for="notes" class="block text-lg font-medium text-gray-700 mb-3">Notes</label>
-                <textarea name="notes" id="notes" rows="4" 
-                          class="block w-full px-6 py-5 text-lg border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500">{{ old('notes') }}</textarea>
-            </div>
+                    <!-- Fuel Type -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-3">Fuel Type</label>
+                        <input type="text" name="fuel_type" value="{{ old('fuel_type') }}"
+                               class="w-full px-6 py-4 border border-gray-300 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    </div>
 
-            <!-- Submit -->
-            <div class="pt-10 flex justify-end">
-                <button type="submit" 
-                        class="px-12 py-5 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition font-medium shadow-md">
-                    Log Fill-up
-                </button>
-            </div>
-        </form>
+                    <!-- Station Name -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-3">Station Name</label>
+                        <input type="text" name="station_name"
+                               class="w-full px-6 py-4 border border-gray-300 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    </div>
+
+                    <!-- Total Cost -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-3">Total Cost ($)</label>
+                        <input type="number" name="total_cost" step="0.01"
+                               class="w-full px-6 py-4 border border-gray-300 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    </div>
+                </div>
+
+                <!-- Notes -->
+                <div class="mt-8">
+                    <label class="block text-sm font-medium text-gray-700 mb-3">Notes / Remarks</label>
+                    <textarea name="notes" rows="4"
+                              class="w-full px-6 py-4 border border-gray-300 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500"></textarea>
+                </div>
+
+                <!-- Photos -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mt-8">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-3">Odometer Photo</label>
+                        <input type="file" name="odometer_photo" accept="image/*"
+                               class="w-full px-6 py-4 border border-gray-300 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-3">Receipt Photo</label>
+                        <input type="file" name="receipt_photo" accept="image/*"
+                               class="w-full px-6 py-4 border border-gray-300 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    </div>
+                </div>
+
+                <div class="mt-10">
+                    <button type="submit"
+                            class="w-full py-5 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-lg rounded-2xl transition">
+                        Save Fuel Fill-up Record
+                    </button>
+                </div>
+            </form>
+        </div>
     </div>
+
+    <script>
+        const approvedRequests = @json($approvedRequests);
+        const requestSelect = document.querySelector('select[name="fuel_request_id"]');
+        const vehicleSelect = document.getElementById('vehicleSelect');
+        const driverSelect = document.querySelector('select[name="driver_id"]');
+        const fuelTypeInput = document.querySelector('input[name="fuel_type"]');
+        const stationInput = document.querySelector('input[name="station_name"]');
+        const totalCostInput = document.querySelector('input[name="total_cost"]');
+        const odometerInput = document.querySelector('input[name="odometer_reading"]');
+
+        function displayConsumptionHistory() {
+            const selectedOption = vehicleSelect.options[vehicleSelect.selectedIndex];
+            const logsJson = selectedOption.getAttribute('data-logs');
+            
+            if (!logsJson || logsJson === '' || logsJson === '[]') {
+                document.getElementById('consumptionPreview').classList.add('hidden');
+                return;
+            }
+
+            const logs = JSON.parse(logsJson);
+            const preview = document.getElementById('consumptionPreview');
+            const table = document.getElementById('consumptionTable');
+            const avgSpan = document.getElementById('avgConsumption');
+
+            if (logs.length === 0) {
+                preview.classList.add('hidden');
+                return;
+            }
+
+            let html = '';
+            let totalConsumption = 0;
+            let validLogs = 0;
+
+            for (let i = 0; i < logs.length; i++) {
+                const log = logs[i];
+                const distanceSinceLast = i > 0 ? (log.odometer_reading - logs[i-1].odometer_reading) : null;
+                const litresPerM = distanceSinceLast ? ((log.litres_dispensed / (distanceSinceLast * 1000)).toFixed(7)) : null;
+                const kmPerL = distanceSinceLast ? ((distanceSinceLast / log.litres_dispensed).toFixed(2)) : null;
+
+                if (litresPerM) {
+                    totalConsumption += parseFloat(litresPerM);
+                    validLogs++;
+                }
+
+                html += `
+                    <div class="flex justify-between p-2 bg-white rounded">
+                        <span>${log.filled_at.split(' ')[0]} · ${log.litres_dispensed}L</span>
+                        <span>${litresPerM ? litresPerM + ' L/m' : 'N/A'}</span>
+                    </div>
+                `;
+            }
+
+            table.innerHTML = html;
+            const avgValue = validLogs > 0 ? (totalConsumption / validLogs).toFixed(7) : 'N/A';
+            avgSpan.textContent = avgValue;
+
+            if (validLogs > 0) {
+                preview.classList.remove('hidden');
+            }
+        }
+
+        function updateFuelLogFields() {
+            const selectedId = requestSelect.value;
+            if (!selectedId) {
+                vehicleSelect.value = '';
+                driverSelect.value = '';
+                document.getElementById('consumptionPreview').classList.add('hidden');
+                return;
+            }
+
+            const selectedRequest = approvedRequests.find(req => req.id.toString() === selectedId.toString());
+            if (!selectedRequest) return;
+
+            if (selectedRequest.vehicle) {
+                vehicleSelect.value = selectedRequest.vehicle.id;
+                displayConsumptionHistory();
+                
+                if (selectedRequest.vehicle.assigned_driver_id) {
+                    driverSelect.value = selectedRequest.vehicle.assigned_driver_id;
+                }
+            }
+
+            if (selectedRequest.fuel_type && !fuelTypeInput.value) {
+                fuelTypeInput.value = selectedRequest.fuel_type;
+            }
+            if (selectedRequest.station_name && !stationInput.value) {
+                stationInput.value = selectedRequest.station_name;
+            }
+            if (selectedRequest.total_cost && !totalCostInput.value) {
+                totalCostInput.value = selectedRequest.total_cost;
+            }
+            if (selectedRequest.odometer_reading && !odometerInput.value) {
+                odometerInput.value = selectedRequest.odometer_reading;
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            requestSelect.addEventListener('change', updateFuelLogFields);
+            vehicleSelect.addEventListener('change', displayConsumptionHistory);
+        });
+    </script>
 @endsection

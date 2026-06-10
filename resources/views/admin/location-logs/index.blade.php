@@ -1,157 +1,117 @@
 @extends('layouts.admin')
 
-@section('title', 'Vehicle Locations')
+@section('title', 'Fleet Vehicle Tracking')
 
 @section('content')
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
-            <div>
-                <h1 class="text-3xl font-bold text-gray-900">Vehicle Locations</h1>
-                <p class="mt-2 text-gray-600">Real-time GPS tracking overview</p>
-            </div>
-        </div>
-
-        <!-- Session Messages -->
-        @if (session('success'))
-            <div class="mb-6 bg-green-50 border border-green-200 text-green-800 px-6 py-4 rounded-xl flex items-center">
-                {{ session('success') }}
-            </div>
-        @endif
-
-        @if (session('error'))
-            <div class="mb-6 bg-red-50 border border-red-200 text-red-800 px-6 py-4 rounded-xl flex items-center">
-                {{ session('error') }}
-            </div>
-        @endif
-
-        @if (session('warning'))
-            <div class="mb-6 bg-yellow-50 border border-yellow-200 text-yellow-800 px-6 py-4 rounded-xl flex items-center">
-                {{ session('warning') }}
-            </div>
-        @endif
-
-        <!-- Generated Link Display (shows right after generation) -->
-        @if (session('tracking_link'))
-            <div class="mb-8 bg-blue-50 border border-blue-200 rounded-xl p-6">
-                <h3 class="text-xl font-bold mb-4 text-blue-900">New Tracking Link Ready</h3>
-                
-                <p class="mb-3 text-blue-800">
-                    For vehicle: <strong>{{ session('tracking_vehicle') }}</strong>
-                </p>
-
-                <div class="flex flex-col sm:flex-row items-start sm:items-center gap-4 mb-4">
-                    <code class="flex-1 bg-white p-4 rounded-lg border border-blue-100 break-all font-mono text-sm text-gray-800">
-                        {{ session('tracking_link') }}
-                    </code>
-
-                    <button onclick="navigator.clipboard.writeText('{{ session('tracking_link') }}').then(() => alert('Link copied!'))"
-                            class="px-6 py-3 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition text-sm font-medium whitespace-nowrap">
-                        Copy Link
-                    </button>
-                </div>
-
-                <p class="text-sm italic text-blue-700">
-                    This link expires at {{ session('tracking_expires_at') }} (3 minutes from now).
-                    Share it immediately with the driver.
-                </p>
-            </div>
-        @endif
-
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            @forelse ($vehicles as $vehicle)
-                <div class="bg-white rounded-2xl shadow overflow-hidden">
-                    <div class="p-6 border-b border-gray-200 flex justify-between items-center">
-                        <div>
-                            <h2 class="text-xl font-bold">
-                                {{ $vehicle->plate_number }} — {{ $vehicle->make ?? 'N/A' }} {{ $vehicle->model ?? '' }}
-                            </h2>
-                            @if ($vehicle->latestLocation)
-                                <p class="text-sm text-gray-600 mt-1">
-                                    Last update: {{ $vehicle->latestLocation->created_at->diffForHumans() }}
-                                </p>
-                            @else
-                                <p class="text-sm text-gray-500 mt-1">No location data yet</p>
-                            @endif
-                        </div>
-
-                        <!-- Generate link - simple POST form -->
-                        <form action="{{ route('admin.vehicles.generate-tracking-link', $vehicle) }}" method="POST" class="inline">
-                            @csrf
-                            <button type="submit" class="px-5 py-2.5 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition">
-                                Generate Link
-                            </button>
-                        </form>
-                    </div>
-
-                    <div class="p-6">
-                        @if ($vehicle->latestLocation)
-                            <div id="map-{{ $vehicle->id }}" class="h-64 rounded-xl bg-gray-200"></div>
-
-                            <div class="mt-6 grid grid-cols-2 gap-4 text-sm">
-                                <div>
-                                    <p class="font-medium text-gray-700">Coordinates</p>
-                                    <p>{{ number_format($vehicle->latestLocation->latitude, 6) }}, {{ number_format($vehicle->latestLocation->longitude, 6) }}</p>
-                                </div>
-                                <div>
-                                    <p class="font-medium text-gray-700">Accuracy</p>
-                                    <p>{{ $vehicle->latestLocation->accuracy ? $vehicle->latestLocation->accuracy . ' m' : 'N/A' }}</p>
-                                </div>
-                                <div>
-                                    <p class="font-medium text-gray-700">Speed</p>
-                                    <p>{{ $vehicle->latestLocation->speed ? number_format($vehicle->latestLocation->speed * 3.6, 1) . ' km/h' : 'N/A' }}</p>
-                                </div>
-                                <div>
-                                    <p class="font-medium text-gray-700">Driver</p>
-                                    <p>{{ $vehicle->latestLocation->driver->name ?? 'Unknown' }}</p>
-                                </div>
-                            </div>
-
-                            <script>
-                                document.addEventListener('DOMContentLoaded', function () {
-                                    var lat = {{ $vehicle->latestLocation->latitude ?? 0 }};
-                                    var lng = {{ $vehicle->latestLocation->longitude ?? 0 }};
-                                    if (lat === 0 && lng === 0) return;
-
-                                    var map = L.map('map-{{ $vehicle->id }}').setView([lat, lng], 15);
-                                    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                                        attribution: '© OpenStreetMap contributors'
-                                    }).addTo(map);
-
-                                    L.marker([lat, lng]).addTo(map)
-                                        .bindPopup('Latest position<br>Time: {{ $vehicle->latestLocation->created_at->format('H:i d/m/Y') }}');
-                                });
-                            </script>
-                        @else
-                            <div class="h-64 bg-gray-100 rounded-xl flex items-center justify-center">
-                                <p class="text-gray-500">No GPS data available for this vehicle yet.</p>
-                            </div>
-                        @endif
-                    </div>
-                </div>
-            @empty
-                <div class="col-span-full text-center py-16 text-gray-500">
-                    No vehicles with location data yet.
-                </div>
-            @endforelse
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="flex justify-between items-center mb-8">
+        <div>
+            <h1 class="text-3xl font-bold text-gray-900">Fleet Vehicles Tracking</h1>
+            <p class="text-gray-600">Select a vehicle to generate permanent tracking link</p>
         </div>
     </div>
 
-    <script>
-    function refreshLocations() {
-        document.querySelectorAll('[id^="map-"]').forEach(mapEl => {
-            const vehicleId = mapEl.id.replace('map-', '');
-            fetch(`/admin/vehicles/${vehicleId}/latest-location`)
-                .then(res => res.json())
-                .then(data => {
-                    if (data.latitude && data.longitude) {
-                        // You can update marker here if you want live update
-                        console.log(`Vehicle ${vehicleId} updated: ${data.latitude}, ${data.longitude}`);
-                    }
-                });
-        });
-    }
+    @if (session('success'))
+        <div class="mb-6 bg-green-50 border border-green-200 text-green-800 px-6 py-4 rounded-xl">
+            {{ session('success') }}
+        </div>
+    @endif
 
-    // Refresh every 30 seconds
-    setInterval(refreshLocations, 30000);
+    <!-- Permanent Link Display -->
+    @if (session('tracking_link'))
+        <div class="mb-8 bg-emerald-50 border border-emerald-200 rounded-2xl p-6">
+            <h3 class="text-xl font-bold text-emerald-900 mb-3">✅ Permanent Tracking Link Ready</h3>
+            <p class="mb-3">
+                Vehicle: <strong>{{ session('tracking_vehicle') }}</strong>
+            </p>
+            
+            <div class="flex flex-col sm:flex-row gap-4 bg-white p-4 rounded-xl border">
+                <code class="flex-1 p-4 bg-gray-50 rounded-lg font-mono text-sm break-all">
+                    {{ session('tracking_link') }}
+                </code>
+                <button onclick="copyToClipboard('{{ session('tracking_link') }}')" 
+                        class="px-8 py-3 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700">
+                    Copy Link
+                </button>
+            </div>
+
+            <p class="text-sm text-emerald-700 mt-4">
+                Share this link once with the driver. The phone will continue sending location 
+                anytime it has internet connection.
+            </p>
+        </div>
+    @endif
+
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        @forelse ($vehicles as $vehicle)
+            <div class="bg-white rounded-2xl shadow border border-gray-100 overflow-hidden">
+                <div class="p-6">
+                    <div class="flex justify-between">
+                        <h2 class="text-2xl font-bold">{{ $vehicle->plate_number }}</h2>
+                        @if ($vehicle->tracking_token)
+                            <span class="px-4 py-1 text-xs font-semibold bg-emerald-100 text-emerald-700 rounded-full">Active</span>
+                        @else
+                            <span class="px-4 py-1 text-xs font-semibold bg-gray-100 text-gray-600 rounded-full">Inactive</span>
+                        @endif
+                    </div>
+                    <p class="text-gray-500">{{ $vehicle->make ?? '' }} {{ $vehicle->model ?? '' }}</p>
+                </div>
+
+                <div class="px-6 pb-6">
+                    @if ($vehicle->latestLocation)
+                        <div id="map-{{ $vehicle->id }}" class="h-52 rounded-xl"></div>
+                        <div class="mt-4 text-sm grid grid-cols-2 gap-3">
+                            <div>
+                                <span class="text-gray-500">Last Update:</span><br>
+                                <strong>{{ $vehicle->latestLocation->created_at->diffForHumans() }}</strong>
+                            </div>
+                            <div>
+                                <span class="text-gray-500">Speed:</span><br>
+                                <strong>{{ $vehicle->latestLocation->speed ? number_format($vehicle->latestLocation->speed * 3.6, 1) : '0' }} km/h</strong>
+                            </div>
+                        </div>
+                    @else
+                        <div class="h-52 bg-gray-100 rounded-xl flex items-center justify-center">
+                            <p class="text-gray-500 text-center">No location data yet</p>
+                        </div>
+                    @endif
+                </div>
+
+                <div class="border-t p-6 flex gap-3 bg-gray-50">
+                    @if (!$vehicle->tracking_token)
+                        <form action="{{ route('admin.vehicles.generate-tracking-link', $vehicle) }}" method="POST" class="flex-1">
+                            @csrf
+                            <button type="submit" class="w-full py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-medium">
+                                Generate Permanent Link
+                            </button>
+                        </form>
+                    @else
+                        <a href="{{ url('/tracking/' . $vehicle->tracking_token) }}" target="_blank"
+                           class="flex-1 py-3.5 text-center border border-gray-300 hover:bg-gray-100 rounded-xl text-sm font-medium">
+                            Open Tracking Page
+                        </a>
+                    @endif
+
+                    <a href="{{ route('admin.vehicles.show', $vehicle) }}" 
+                       class="flex-1 py-3.5 text-center bg-gray-800 text-white rounded-xl text-sm font-medium hover:bg-gray-900">
+                        View History
+                    </a>
+                </div>
+            </div>
+        @empty
+            <p class="col-span-full text-center py-10 text-gray-500">No vehicles registered yet.</p>
+        @endforelse
+    </div>
+</div>
+
+<script>
+function copyToClipboard(text) {
+    navigator.clipboard.writeText(text).then(() => {
+        alert("✅ Link copied to clipboard!");
+    });
+}
+
+// Optional: Auto refresh every 25 seconds
+setInterval(() => location.reload(), 25000);
 </script>
 @endsection

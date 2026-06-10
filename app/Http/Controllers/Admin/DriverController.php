@@ -60,7 +60,7 @@ class DriverController extends Controller
                 'exists:users,id',
                 Rule::unique('drivers', 'user_id'),
             ],
-            'license_number'        => ['required', 'string', 'max:100'],
+            'license_number'        => ['required', 'string', 'max:10'],
             'license_category'      => ['nullable', 'string', 'max:50'],
             'license_issue_date'    => ['nullable', 'date'],
             

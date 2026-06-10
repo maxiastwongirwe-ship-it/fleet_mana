@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: fleetflow-management
+    env: php
+    branch: main
+    plan: starter
+    region: oregon
+    buildCommand: composer install --no-dev --optimize-autoloader && npm ci && npm run build
+    startCommand: php artisan serve --host 0.0.0.0 --port $PORT
+    disk: 512
+    healthCheckPath: /
+
+# NOTE: Set production environment variables in the Render dashboard.
+# Required vars include APP_KEY, APP_ENV, APP_DEBUG, APP_URL, DB_CONNECTION,
+# DB_HOST, DB_PORT, DB_DATABASE, DB_USERNAME, DB_PASSWORD, and any other service credentials.

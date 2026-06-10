@@ -15,11 +15,23 @@ class TransportRequest extends Model
     'purpose',
     'status',
     'admin_notes',
+
+     'pickup_lat',      // ← new
+    'pickup_lng',      // ← new
+    'dropoff_lat',     // ← new
+    'dropoff_lng',     // ← new
 ];
 
     protected $casts = [
         'pickup_time' => 'datetime',
         'status'      => 'string',
+
+
+         'pickup_time'   => 'datetime',
+    'pickup_lat'    => 'decimal:8',
+    'pickup_lng'    => 'decimal:8',
+    'dropoff_lat'   => 'decimal:8',
+    'dropoff_lng'   => 'decimal:8',
     ];
 
     public function requester()

@@ -20,6 +20,7 @@ class Driver extends Model
         'approved',
         'tracking_token',
         'tracking_token_expires_at',
+        
     ];
 protected $casts = [
     'license_issue_date'        => 'date',

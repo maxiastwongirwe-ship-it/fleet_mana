@@ -16,7 +16,7 @@ class TransportRequestController extends Controller
        
     }
 
-    public function index()
+   public function index()
     {
         $requests = TransportRequest::with([
             'requester',
@@ -42,7 +42,11 @@ class TransportRequestController extends Controller
             'request_type'      => 'required|in:passenger,goods',
             'requested_by'      => 'required|exists:users,id',
             'pickup_location'   => 'required|string|max:255',
+            'pickup_lat'        => 'nullable|numeric|between:-90,90',
+            'pickup_lng'        => 'nullable|numeric|between:-180,180',
             'dropoff_location'  => 'required|string|max:255',
+            'dropoff_lat'       => 'nullable|numeric|between:-90,90',
+            'dropoff_lng'       => 'nullable|numeric|between:-180,180',
             'pickup_time'       => 'required|date',
             'purpose'           => 'nullable|string',
             'passengers'        => 'required_if:request_type,passenger|array',
@@ -50,7 +54,19 @@ class TransportRequestController extends Controller
             'passengers.*.user_id' => 'nullable|exists:users,id',
         ]);
 
-        $transportRequest = TransportRequest::create($validated);
+        $transportRequest = TransportRequest::create([
+            'request_type'     => $validated['request_type'],
+            'requested_by'     => $validated['requested_by'],
+            'pickup_location'  => $validated['pickup_location'],
+            'pickup_lat'       => $validated['pickup_lat'] ?? null,
+            'pickup_lng'       => $validated['pickup_lng'] ?? null,
+            'dropoff_location' => $validated['dropoff_location'],
+            'dropoff_lat'      => $validated['dropoff_lat'] ?? null,
+            'dropoff_lng'      => $validated['dropoff_lng'] ?? null,
+            'pickup_time'      => $validated['pickup_time'],
+            'purpose'          => $validated['purpose'] ?? null,
+            'status'           => 'pending',
+        ]);
 
         if ($request->request_type === 'passenger' && $request->passengers) {
             foreach ($request->passengers as $p) {
@@ -62,10 +78,10 @@ class TransportRequestController extends Controller
         }
 
         return redirect()->route('admin.transport-requests.index')
-            ->with('success', 'Transport request created.');
+            ->with('success', 'Transport request created successfully.');
     }
 
-    public function show(TransportRequest $transportRequest)
+       public function show(TransportRequest $transportRequest)
     {
         $transportRequest->load([
             'requester',
@@ -74,7 +90,6 @@ class TransportRequestController extends Controller
             'trips.driver'
         ]);
 
-        // Available vehicles (not in active/scheduled trip)
         $availableVehicles = Vehicle::where('status', '!=', 'maintenance')
             ->whereDoesntHave('transportTrips', function ($q) {
                 $q->whereIn('status', ['scheduled', 'active']);
@@ -94,7 +109,7 @@ class TransportRequestController extends Controller
         ));
     }
 
-    // Approve pending request
+    // Approve
     public function approve(TransportRequest $transportRequest)
     {
         if (!$transportRequest->isPending()) {
@@ -103,10 +118,10 @@ class TransportRequestController extends Controller
 
         $transportRequest->update(['status' => 'approved']);
 
-        return back()->with('success', 'Request approved.');
+        return back()->with('success', 'Request approved successfully.');
     }
 
-    // Reject with reason
+    // Reject
     public function reject(Request $request, TransportRequest $transportRequest)
     {
         if (!$transportRequest->isPending()) {
@@ -125,38 +140,62 @@ class TransportRequestController extends Controller
         return back()->with('success', 'Request rejected.');
     }
 
-    // Assign vehicle + driver (creates trip)
+    // Assign vehicle + driver
+       /**
+     * Assign vehicle (and driver) to the transport request
+     */
     public function assign(Request $request, TransportRequest $transportRequest)
     {
         if (!in_array($transportRequest->status, ['pending', 'approved'])) {
-            return back()->with('error', 'This request cannot be assigned.');
+            return back()->with('error', 'This request cannot be assigned. It must be pending or approved first.');
         }
 
         $validated = $request->validate([
             'vehicle_id'     => 'required|exists:vehicles,id',
-            'driver_id'      => 'required|exists:users,id,role,driver',
+            'driver_id'      => 'nullable|exists:users,id,role,driver',
             'departure_time' => 'required|date|after:now',
         ]);
 
-        $vehicle = Vehicle::findOrFail($validated['vehicle_id']);
-        if ($vehicle->status === 'maintenance') {
-            return back()->with('error', 'Vehicle is under maintenance.');
+        $vehicle = Vehicle::with('assignedDriver')->findOrFail($validated['vehicle_id']);
+
+        if (!$vehicle->isAvailable()) {
+            return back()->with('error', 'This vehicle is not available.');
+        }
+
+        $driver_id = $validated['driver_id'] ?? $vehicle->assigned_driver_id;
+
+        if (!$driver_id) {
+            return back()->with('error', 'No driver found for this vehicle.');
+        }
+
+        // Check driver is not busy
+        $busyDriver = TransportTrip::where('driver_id', $driver_id)
+            ->whereIn('status', ['scheduled', 'active'])
+            ->exists();
+
+        if ($busyDriver) {
+            return back()->with('error', 'This driver is already assigned to another active trip.');
         }
 
         // Create trip
         $trip = TransportTrip::create([
-            'vehicle_id'     => $validated['vehicle_id'],
-            'driver_id'      => $validated['driver_id'],
+            'vehicle_id'     => $vehicle->id,
+            'driver_id'      => $driver_id,
             'departure_time' => $validated['departure_time'],
             'status'         => 'scheduled',
+            'notes'          => 'Assigned to transport request #' . $transportRequest->id,
         ]);
 
         // Link request to trip
         $transportRequest->trips()->attach($trip->id);
 
-        // Update status
+        // IMPORTANT: Force update status
         $transportRequest->update(['status' => 'assigned']);
 
-        return back()->with('success', 'Vehicle & driver assigned.');
+        // Refresh the model to get latest relationships
+        $transportRequest->refresh();
+        $transportRequest->load(['trips.vehicle', 'trips.driver']);
+
+        return back()->with('success', "Vehicle {$vehicle->plate_number} has been successfully assigned.");
     }
 }

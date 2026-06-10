@@ -66,10 +66,10 @@ class FortifyServiceProvider extends ServiceProvider
                         return redirect()->route('driver.dashboard');
                     }
 
-                    // Worker dashboard (optional — uncomment when ready)
-                    // if ($user->role === 'worker') {
-                    //     return redirect()->route('worker.dashboard');
-                    // }
+                    
+                    if ($user->role === 'worker') {
+                        return redirect()->route('worker.dashboard');
+                    }
 
                     // Fallback for pending users or unknown roles
                     return redirect()->route('dashboard');

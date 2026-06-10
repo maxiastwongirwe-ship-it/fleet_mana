@@ -84,10 +84,7 @@ class User extends Authenticatable
         return $this->hasOne(Driver::class);
     }
 
-    public function workerProfile()
-    {
-        return $this->hasOne(Worker::class);
-    }
+   
 
     public function assignedVehicle()
     {
@@ -147,4 +144,9 @@ class User extends Authenticatable
     {
         return ucfirst(str_replace('_', ' ', $this->role ?? 'User'));
     }
+
+    public function worker()
+{
+    return $this->hasOne(Worker::class);
+}
 }

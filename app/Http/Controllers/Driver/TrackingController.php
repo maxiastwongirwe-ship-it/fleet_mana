@@ -11,41 +11,43 @@ use Illuminate\Support\Facades\Auth;
 
 class TrackingController extends Controller
 {
-  public function index($token)
+   // Show tracking page (persistent)
+    public function index($token)
     {
         $vehicle = Vehicle::where('tracking_token', $token)->first();
 
-        if (!$vehicle || !$vehicle->isTrackingTokenValid()) {
-            return view('tracking.expired');
+        if (!$vehicle) {
+            return view('tracking.expired'); // or "invalid"
         }
 
         return view('tracking.dashboard', compact('vehicle'));
     }
 
-public function storeLocation(Request $request, $token)
-{
-    $validated = $request->validate([
-        'latitude'  => 'required|numeric|between:-90,90',
-        'longitude' => 'required|numeric|between:-180,180',
-        'accuracy'  => 'nullable|numeric|min:0',
-        'speed'     => 'nullable|numeric|min:0',
-    ]);
+    // Store location (called continuously)
+    public function storeLocation(Request $request, $token)
+    {
+        $validated = $request->validate([
+            'latitude'  => 'required|numeric|between:-90,90',
+            'longitude' => 'required|numeric|between:-180,180',
+            'accuracy'  => 'nullable|numeric|min:0',
+            'speed'     => 'nullable|numeric|min:0',
+        ]);
 
-    $vehicle = Vehicle::where('tracking_token', $token)->first();
+        $vehicle = Vehicle::where('tracking_token', $token)->first();
 
-    if (!$vehicle || !$vehicle->isTrackingTokenValid()) {
-        return response()->json(['success' => false, 'error' => 'Invalid or expired token'], 403);
+        if (!$vehicle) {
+            return response()->json(['success' => false, 'error' => 'Invalid token'], 403);
+        }
+
+        LocationLog::create([
+            'vehicle_id' => $vehicle->id,
+            'driver_id'  => $vehicle->assignedDriver?->id ?? null,
+            'latitude'   => $validated['latitude'],
+            'longitude'  => $validated['longitude'],
+            'accuracy'   => $validated['accuracy'],
+            'speed'      => $validated['speed'],
+        ]);
+
+        return response()->json(['success' => true]);
     }
-
-    LocationLog::create([
-        'vehicle_id' => $vehicle->id,
-        'driver_id'  => $vehicle->assignedDriver?->id ?? auth()->id(),
-        'latitude'   => $validated['latitude'],
-        'longitude'  => $validated['longitude'],
-        'accuracy'   => $validated['accuracy'],
-        'speed'      => $validated['speed'],
-    ]);
-
-    return response()->json(['success' => true, 'message' => 'Location saved']);
-}
 }

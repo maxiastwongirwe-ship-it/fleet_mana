@@ -3,117 +3,119 @@
 @section('title', 'Fuel Log Details')
 
 @section('content')
-    <div class="max-w-4xl mx-auto">
-        <div class="flex justify-between items-center mb-10">
-            <h1 class="text-3xl font-bold text-gray-900">Fuel Fill-up Details</h1>
-            <a href="{{ route('admin.fuel-logs.index') }}" class="text-indigo-600 hover:text-indigo-800 font-medium flex items-center">
-                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-                </svg>
-                Back to Logs
-            </a>
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 py-8">
+        <div class="flex justify-between items-center mb-8">
+            <h1 class="text-3xl font-semibold text-gray-900">Fuel Log #{{ $fuelLog->id }}</h1>
+            <a href="{{ route('admin.fuel-logs.index') }}" class="text-indigo-600 hover:text-indigo-800">← Back to List</a>
         </div>
 
-        <div class="bg-white rounded-2xl shadow p-10 space-y-12">
-            <!-- Main Info -->
-            <div class="border-b border-gray-200 pb-8">
-                <h3 class="text-2xl font-semibold text-gray-900 mb-4">Fill-up Information</h3>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-                    <div>
-                        <p class="text-lg"><strong>Vehicle:</strong> {{ $fuelLog->vehicle->plate_number }}</p>
-                    </div>
-                    <div>
-                        <p class="text-lg"><strong>Driver:</strong> {{ $fuelLog->driver ? $fuelLog->driver->name : 'N/A' }}</p>
-                    </div>
-                    <div>
-                        <p class="text-lg"><strong>Litres Dispensed:</strong> {{ number_format($fuelLog->litres_dispensed, 2) }} L</p>
-                    </div>
-                    <div>
-                        <p class="text-lg"><strong>Odometer Reading:</strong> {{ $fuelLog->odometer_reading }} km</p>
-                    </div>
-                    <div>
-                        <p class="text-lg"><strong>Filled At:</strong> {{ $fuelLog->filled_at->format('d M Y H:i') }}</p>
-                    </div>
-                    <div>
-                        <p class="text-lg"><strong>Station:</strong> {{ $fuelLog->station_name ?? 'Not specified' }}</p>
+        <div class="bg-white rounded-3xl shadow-sm p-10">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-10">
+                <!-- Basic Info -->
+                <div>
+                    <h2 class="text-xl font-semibold mb-6">Fill-up Information</h2>
+                    <div class="space-y-5">
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">Vehicle</span>
+                            <span class="font-medium">{{ $fuelLog->vehicle->plate_number ?? 'N/A' }}</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">Driver</span>
+                            <span class="font-medium">{{ $fuelLog->driver->name ?? 'N/A' }}</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">Filled At</span>
+                            <span class="font-medium">{{ $fuelLog->filled_at->format('d M Y • H:i') }}</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">Litres Dispensed</span>
+                            <span class="font-semibold text-emerald-600">{{ number_format($fuelLog->litres_dispensed, 2) }} L</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">Odometer Reading</span>
+                            <span class="font-medium">{{ number_format($fuelLog->odometer_reading) }} km</span>
+                        </div>
                     </div>
                 </div>
-            </div>
 
-            <!-- Distance & Previous -->
-            <div class="border-b border-gray-200 pb-8">
-                <h3 class="text-2xl font-semibold text-gray-900 mb-4">Distance & Fuel Consumption</h3>
-                @if ($fuelLog->distanceSinceLast)
-                    <p class="text-lg">Distance since last fill-up: <strong>{{ $fuelLog->distanceSinceLast }} km</strong></p>
-                @else
-                    <p class="text-lg text-gray-600">This is the first logged fill-up for this vehicle.</p>
-                @endif
+                <!-- Consumption Analysis -->
+                <div>
+                    <h2 class="text-xl font-semibold mb-6">Consumption Analysis</h2>
+                    @if($fuelLog->distance_since_last)
+                        <div class="bg-gray-50 rounded-2xl p-6">
+                            <div class="flex justify-between mb-4">
+                                <span>Distance Travelled</span>
+                                <span class="font-semibold">{{ number_format($fuelLog->distance_since_last) }} km</span>
+                            </div>
+                            <div class="flex justify-between mb-4">
+                                <span>Consumption Rate</span>
+                                <span class="font-bold text-lg">{{ $fuelLog->litres_per_metre }} L/m</span>
+                            </div>
+                            <div class="flex justify-between mb-4">
+                                <span>Average Last 5</span>
+                                <span class="font-medium">
+                                    @if($fuelLog->average_previous_litres_per_metre)
+                                        {{ number_format($fuelLog->average_previous_litres_per_metre, 7) }} L/m
+                                    @else
+                                        N/A
+                                    @endif
+                                </span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span>Km per Litre</span>
+                                <span class="font-medium">{{ $fuelLog->km_per_litre }} km/L</span>
+                            </div>
+                        </div>
 
-                @if ($fuelLog->previousLitres)
-                    <p class="text-lg mt-2">Previous fill-up amount: <strong>{{ number_format($fuelLog->previousLitres, 2) }} L</strong></p>
-                @endif
+                        @if($fuelLog->isSuspicious())
+                            <div class="mt-6 bg-red-50 border border-red-200 rounded-2xl p-6 text-red-700">
+                                <div class="flex items-center gap-3 text-lg font-semibold">
+                                    ⚠️ SUSPICIOUS HIGH CONSUMPTION DETECTED
+                                </div>
+                                <p class="mt-2">This fill-up shows significantly higher fuel consumption than the vehicle's average over the previous 5 fill-ups.</p>
+                                @if($fuelLog->consumption_delta_percent)
+                                    <p class="mt-2 text-sm">
+                                        Current consumption is {{ number_format($fuelLog->consumption_delta_percent, 2) }}% higher than the 5-log average.
+                                    </p>
+                                @endif
+                            </div>
+                        @endif
+                            <div class="mt-6 bg-red-50 border border-red-200 rounded-2xl p-6 text-red-700">
+                                <div class="flex items-center gap-3 text-lg font-semibold">
+                                    ⚠️ SUSPICIOUS HIGH CONSUMPTION DETECTED
+                                </div>
+                                <p class="mt-2">This fill-up shows significantly higher fuel consumption than the vehicle's normal baseline.</p>
+                            </div>
+                        @endif
+                    @else
+                        <p class="text-gray-500">Not enough data to calculate consumption yet.</p>
+                    @endif
+                </div>
             </div>
 
             <!-- Photos -->
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <div>
-                    <h3 class="text-xl font-semibold text-gray-900 mb-4">Odometer Photo</h3>
-                    @if ($fuelLog->odometerPhotoUrl)
-                        <a href="{{ $fuelLog->odometerPhotoUrl }}" target="_blank">
-                            <img src="{{ $fuelLog->odometerPhotoUrl }}" alt="Odometer" class="w-full max-h-80 object-contain rounded-xl shadow">
-                        </a>
-                    @else
-                        <p class="text-gray-600">No odometer photo.</p>
-                    @endif
-                </div>
-
-                <div>
-                    <h3 class="text-xl font-semibold text-gray-900 mb-4">Receipt / Proof</h3>
-                    @if ($fuelLog->receiptPhotoUrl)
-                        <a href="{{ $fuelLog->receiptPhotoUrl }}" target="_blank">
-                            <img src="{{ $fuelLog->receiptPhotoUrl }}" alt="Receipt" class="w-full max-h-80 object-contain rounded-xl shadow">
-                        </a>
-                    @else
-                        <p class="text-gray-600">No receipt photo.</p>
-                    @endif
-                </div>
+            <div class="mt-12 grid grid-cols-1 md:grid-cols-2 gap-8">
+                @if($fuelLog->odometer_photo_url)
+                    <div>
+                        <p class="font-medium mb-3">Odometer Photo</p>
+                        <img src="{{ $fuelLog->odometer_photo_url }}" 
+                             class="w-full rounded-2xl shadow" alt="Odometer">
+                    </div>
+                @endif
+                @if($fuelLog->receipt_photo_url)
+                    <div>
+                        <p class="font-medium mb-3">Receipt Photo</p>
+                        <img src="{{ $fuelLog->receipt_photo_url }}" 
+                             class="w-full rounded-2xl shadow" alt="Receipt">
+                    </div>
+                @endif
             </div>
 
-            <!-- Previous 5 Logs -->
-            <div class="border-t border-gray-200 pt-10">
-                <h3 class="text-2xl font-semibold text-gray-900 mb-6">Previous 5 Fill-ups for this Vehicle</h3>
-                @if ($previousLogs->isNotEmpty())
-                    <div class="overflow-x-auto">
-                        <table class="min-w-full divide-y divide-gray-200">
-                            <thead class="bg-gray-50">
-                                <tr>
-                                    <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase">Date</th>
-                                    <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase">Litres</th>
-                                    <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase">Odometer</th>
-                                    <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase">Distance</th>
-                                </tr>
-                            </thead>
-                            <tbody class="divide-y divide-gray-200">
-                                @foreach ($previousLogs as $prev)
-                                    <tr>
-                                        <td class="px-6 py-4">{{ $prev->filled_at->format('d M Y H:i') }}</td>
-                                        <td class="px-6 py-4">{{ number_format($prev->litres_dispensed, 2) }} L</td>
-                                        <td class="px-6 py-4">{{ $prev->odometer_reading }} km</td>
-                                        <td class="px-6 py-4">
-                                            @if ($prev->previousLog)
-                                                {{ $prev->odometer_reading - $prev->previousLog->odometer_reading }} km
-                                            @else
-                                                First
-                                            @endif
-                                        </td>
-                                    </tr>
-                                @endforeach
-                            </tbody>
-                        </table>
-                    </div>
-                @else
-                    <p class="text-gray-600">No previous fill-ups for this vehicle.</p>
-                @endif
+            <div class="mt-10 pt-8 border-t">
+                <a href="{{ route('admin.fuel-logs.index') }}" 
+                   class="inline-block px-8 py-4 bg-gray-100 hover:bg-gray-200 rounded-2xl font-medium">
+                    Back to All Logs
+                </a>
             </div>
         </div>
     </div>

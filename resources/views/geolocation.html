@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Live Location Tracker</title>
+
+<style>
+    body {
+        font-family: Arial;
+        background: #f0f9ff;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+    }
+
+    .box {
+        background: white;
+        padding: 25px;
+        border-radius: 12px;
+        text-align: center;
+        width: 300px;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    }
+
+    button {
+        padding: 10px 15px;
+        border: none;
+        background: #0ea5e9;
+        color: white;
+        border-radius: 6px;
+        cursor: pointer;
+        margin: 5px;
+    }
+
+    button:hover {
+        background: #0284c7;
+    }
+
+    .result {
+        margin-top: 15px;
+        font-size: 14px;
+    }
+
+    .error {
+        color: red;
+    }
+
+    .good {
+        color: green;
+    }
+</style>
+</head>
+
+<body>
+
+<div class="box">
+    <h3>📍 Live Location</h3>
+
+    <button onclick="startTracking()">Start</button>
+    <button onclick="stopTracking()">Stop</button>
+
+    <div id="result" class="result">
+        Click start to track location
+    </div>
+</div>
+
+<script>
+let watchId = null;
+
+function startTracking() {
+    const result = document.getElementById("result");
+
+    if (!navigator.geolocation) {
+        result.innerHTML = "<span class='error'>Not supported</span>";
+        return;
+    }
+
+    result.innerHTML = "Starting GPS...";
+
+    watchId = navigator.geolocation.watchPosition(
+        (pos) => {
+            const lat = pos.coords.latitude;
+            const long = pos.coords.longitude;
+            const accuracy = pos.coords.accuracy;
+
+            // OPTIONAL: filter bad accuracy (>3000 meters = 3km)
+            if (accuracy > 3000) {
+                result.innerHTML = `
+                    <span class="error">
+                        Weak signal... trying to improve
+                    </span>
+                    <br>Accuracy: ${Math.round(accuracy)} m
+                `;
+                return;
+            }
+
+            result.innerHTML = `
+                <span class="good">✔ Location Found</span><br><br>
+                <strong>Lat:</strong> ${lat} <br>
+                <strong>Long:</strong> ${long} <br>
+                <strong>Accuracy:</strong> ${Math.round(accuracy)} meters
+            `;
+        },
+        (err) => {
+            let msg = "Error";
+
+            if (err.code === 1) msg = "Permission denied";
+            if (err.code === 2) msg = "Location unavailable";
+            if (err.code === 3) msg = "Timeout";
+
+            result.innerHTML = `<span class="error">${msg}</span>`;
+        },
+        {
+            enableHighAccuracy: true,
+            maximumAge: 0,
+            timeout: 10000
+        }
+    );
+}
+
+function stopTracking() {
+    if (watchId !== null) {
+        navigator.geolocation.clearWatch(watchId);
+        document.getElementById("result").innerHTML = "Tracking stopped";
+    }
+}
+</script>
+
+</body>
+</html>

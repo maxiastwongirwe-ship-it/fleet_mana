@@ -29,6 +29,11 @@ class FuelRequest extends Model
         'card_details',
         'receipt_photo_path',          // path to receipt photo (completion phase)
         'fillup_notes',
+
+        'theft_prediction',
+'theft_prediction_message',
+'expected_litres',
+'fuel_difference',
     ];
 
     protected $casts = [
@@ -132,6 +137,9 @@ class FuelRequest extends Model
             default           => ucfirst($this->status ?? 'Unknown'),
         };
     }
-
+public function fuelLog()
+{
+    return $this->hasOne(FuelLog::class);
+}
 
 }

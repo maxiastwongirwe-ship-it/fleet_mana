@@ -168,9 +168,10 @@ class="sidebar-link px-4 py-3 text-gray-700 flex items-center gap-3 {{ request()
 Transport Requests
 </a>
 
-<a href="{{ route('admin.location-logs.index') }}"
-class="sidebar-link px-4 py-3 text-gray-700 flex items-center gap-3 {{ request()->routeIs('admin.location-logs.*') ? 'active' : '' }}">
-Location Logs
+<a href="{{ route('admin.tracking.links') }}"
+class="sidebar-link px-4 py-3 text-gray-700 flex items-center gap-3 {{ request()->routeIs('admin.fleet.*') ? 'active' : '' }}">
+    Fleet Tracking
+</a>
 </a>
 
 </nav>

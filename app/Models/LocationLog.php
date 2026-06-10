@@ -17,11 +17,16 @@ class LocationLog extends Model
 
     public function vehicle()
     {
-        return $this->belongsTo(Vehicle::class);
+        return $this->belongsTo(
+            Vehicle::class
+        );
     }
 
     public function driver()
     {
-        return $this->belongsTo(User::class, 'driver_id');
+        return $this->belongsTo(
+            User::class,
+            'driver_id'
+        );
     }
 }
